@@ -148,18 +148,14 @@
 
     .period-label {
       background: var(--period-bg);
-      padding: 5px 10px;
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
+      padding: 8px 10px 6px;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--navy);
       border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      text-align: center;
+      letter-spacing: 0.5px;
     }
-    .period-label .p-name { color: var(--navy); }
 
     /* ── Slot button ── */
     .slot {
@@ -214,6 +210,10 @@
     .slot[data-rank="2"] { background: var(--navy-light); }
     .slot[data-rank="2"] .slot-time { color: var(--navy-soft); }
     .slot[data-rank="2"] .slot-rank { background: var(--navy-soft); color: white; }
+
+    .slot[data-rank="3"] { background: #F2F5EF; }
+    .slot[data-rank="3"] .slot-time { color: #7A8A6A; }
+    .slot[data-rank="3"] .slot-rank { background: #7A8A6A; color: white; }
 
     /* Period gap separator */
     .period-gap {
@@ -284,6 +284,7 @@
     }
     .result-rank.r1 { background: var(--gold); color: white; }
     .result-rank.r2 { background: var(--navy-soft); color: white; }
+    .result-rank.r3 { background: #7A8A6A; color: white; }
     .result-label { font-size: 15px; font-weight: 700; }
     .result-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
   </style>
@@ -293,7 +294,7 @@
 <header>
   <div class="hebrew">טו דקות תורה</div>
   <h1>15 Minutes of Torah</h1>
-  <p>Pick your two favorite times</p>
+  <p>Pick your top 3 favorite times</p>
 </header>
 
 <div id="form-view">
@@ -303,7 +304,7 @@
       <input type="text" id="name" placeholder="Your full name" autocomplete="name" />
     </div>
     <div class="instructions">
-      Tap your <strong>1st choice</strong>, then your <strong>2nd choice</strong>. Swipe to see all days. Tap again to deselect.
+      Tap your <strong>1st</strong>, <strong>2nd</strong>, and <strong>3rd</strong> choice in order. Swipe to see all days. Tap again to deselect.
     </div>
   </div>
 
@@ -313,7 +314,7 @@
 
   <div class="submit-bar">
     <button id="submit" disabled>Submit</button>
-    <div class="status-text" id="status-text">Select 2 times to continue</div>
+    <div class="status-text" id="status-text">Select 3 times to continue</div>
   </div>
 </div>
 
@@ -331,12 +332,12 @@ const DAYS = [
     { name: '11',  s: [11,30], e: [12,35] },
     { name: '12',  s: [12,50], e: [13,55] },
     { name: '2',   s: [14,10], e: [15,15] },
-    { name: '3A',  s: [15,30], e: [17,20] },
-    { name: '6A',  s: [18,30], e: [20,20] },
+    { name: '3A',  s: [15,30], e: [17,0]  },
   ]},
   { id: 'tue', abbr: 'Tue', full: 'Tuesday', periods: [
+    { name: '10A', s: [10,45], e: [12,0]  }, // blackout until 10:45
     { name: '2A',  s: [14,25], e: [16,15] },
-    { name: '3B',  s: [16,30], e: [18,20] },
+    { name: '3B',  s: [16,30], e: [17,0]  },
   ]},
   { id: 'wed', abbr: 'Wed', full: 'Wednesday', periods: [
     { name: '9L',  s: [8,50],  e: [9,55]  },
@@ -344,15 +345,13 @@ const DAYS = [
     { name: '11',  s: [11,30], e: [12,35] },
     { name: '12',  s: [12,50], e: [13,55] },
     { name: '2',   s: [14,10], e: [15,15] },
-    { name: '3A',  s: [15,30], e: [17,20] },
-    { name: '6B',  s: [19,30], e: [21,30] },
+    { name: '3A',  s: [15,30], e: [17,0]  },
   ]},
   { id: 'thu', abbr: 'Thu', full: 'Thursday', periods: [
     { name: '9S',  s: [9,5],   e: [9,55]  },
     { name: '10A', s: [10,10], e: [12,0]  },
     { name: '2A',  s: [14,25], e: [16,15] },
-    { name: '3B',  s: [16,30], e: [18,20] },
-    { name: '6A',  s: [18,30], e: [20,20] },
+    { name: '3B',  s: [16,30], e: [17,0]  },
   ]},
   { id: 'fri', abbr: 'Fri', full: 'Friday', periods: [
     { name: '9L',  s: [8,50],  e: [9,55]  },
@@ -421,13 +420,7 @@ DAYS.forEach(day => {
     const section = document.createElement('div');
     section.className = 'period-section';
 
-    const endLabel = fmt(...addMin(...period.e, -0)); // just display end time
-    section.innerHTML = `
-      <div class="period-label">
-        <span class="p-name">Per ${period.name}</span>
-        <span>${fmt(...period.s).replace(' AM','').replace(' PM','')}–${fmt(...period.e).replace(' AM','a').replace(' PM','p')}</span>
-      </div>
-    `;
+    section.innerHTML = `<div class="period-label">${period.name}</div>`;
 
     const slots = getSlots(day.id, period.name, ...period.s, ...period.e);
     slots.forEach(slot => {
@@ -457,20 +450,21 @@ DAYS.forEach(day => {
 });
 
 // ─── Selection ────────────────────────────────────────────────────────────────
-let choices = [null, null];
+let choices = [null, null, null];
 
 function handleSelect(id) {
-  if (choices[0] === id) {
-    choices[0] = choices[1];
-    choices[1] = null;
-  } else if (choices[1] === id) {
-    choices[1] = null;
-  } else if (!choices[0]) {
-    choices[0] = id;
-  } else if (!choices[1]) {
-    choices[1] = id;
+  const idx = choices.indexOf(id);
+  if (idx !== -1) {
+    // deselect: remove and shift remaining choices down
+    choices.splice(idx, 1);
+    choices.push(null);
   } else {
-    choices[1] = id;
+    const empty = choices.indexOf(null);
+    if (empty !== -1) {
+      choices[empty] = id;
+    } else {
+      choices[2] = id; // replace 3rd if all full
+    }
   }
   render();
 }
@@ -479,12 +473,13 @@ function render() {
   document.querySelectorAll('.slot').forEach(btn => {
     const id = btn.dataset.id;
     const rank = btn.querySelector('.slot-rank');
-    if (choices[0] === id) {
-      btn.dataset.rank = '1'; rank.textContent = '1';
-    } else if (choices[1] === id) {
-      btn.dataset.rank = '2'; rank.textContent = '2';
+    const i = choices.indexOf(id);
+    if (i !== -1) {
+      btn.dataset.rank = String(i + 1);
+      rank.textContent = String(i + 1);
     } else {
-      delete btn.dataset.rank; rank.textContent = '';
+      delete btn.dataset.rank;
+      rank.textContent = '';
     }
   });
 
@@ -493,9 +488,10 @@ function render() {
   const submitBtn = document.getElementById('submit');
   const statusEl = document.getElementById('status-text');
 
-  submitBtn.disabled = !(filled === 2 && hasName);
-  if (filled === 0) statusEl.textContent = 'Select 2 times to continue';
-  else if (filled === 1) statusEl.textContent = 'Select one more time';
+  submitBtn.disabled = !(filled === 3 && hasName);
+  if (filled === 0) statusEl.textContent = 'Select 3 times to continue';
+  else if (filled === 1) statusEl.textContent = '2 more to go';
+  else if (filled === 2) statusEl.textContent = '1 more to go';
   else if (!hasName) statusEl.textContent = 'Enter your name above';
   else statusEl.textContent = '✓ Ready to submit';
 }
@@ -516,12 +512,11 @@ document.getElementById('submit').addEventListener('click', () => {
     };
   }
 
-  const first  = slotInfo(choices[0]);
-  const second = slotInfo(choices[1]);
+  const [first, second, third] = choices.map(slotInfo);
 
   const SUBMIT_URL = 'YOUR_APPS_SCRIPT_URL_HERE'; // ← paste your Apps Script URL here
   if (SUBMIT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE') {
-    fetch(SUBMIT_URL, { method: 'POST', body: JSON.stringify({ name, first, second }) })
+    fetch(SUBMIT_URL, { method: 'POST', body: JSON.stringify({ name, first, second, third }) })
       .catch(() => {}); // silent fail — success screen always shows
   }
 
@@ -542,6 +537,13 @@ document.getElementById('submit').addEventListener('click', () => {
       <div>
         <div class="result-label">${second.day} · Period ${second.period}</div>
         <div class="result-sub">${second.start} – ${second.end}</div>
+      </div>
+    </div>
+    <div class="result-row">
+      <div class="result-rank r3">3</div>
+      <div>
+        <div class="result-label">${third.day} · Period ${third.period}</div>
+        <div class="result-sub">${third.start} – ${third.end}</div>
       </div>
     </div>
     <div class="result-row" style="justify-content:center;padding:10px 16px">
