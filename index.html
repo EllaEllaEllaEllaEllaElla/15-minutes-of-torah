@@ -78,6 +78,47 @@
     }
     .name-field input::placeholder { color: #CCC4B8; }
 
+    .form-card {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+    .form-card label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+    .form-card select {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      font-family: inherit;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .form-card select option { color: var(--text); }
+    .form-card textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      font-family: inherit;
+      background: transparent;
+      color: var(--text);
+      resize: none;
+      line-height: 1.5;
+    }
+    .form-card textarea::placeholder { color: #CCC4B8; }
+
     .instructions {
       background: var(--gold-light);
       border: 1px solid var(--gold-border);
@@ -300,8 +341,12 @@
 <div id="form-view">
   <div class="top-bar">
     <div class="name-field">
-      <label for="name">Name</label>
-      <input type="text" id="name" placeholder="Your full name" autocomplete="name" />
+      <label for="firstname">First</label>
+      <input type="text" id="firstname" placeholder="First name" autocomplete="given-name" />
+    </div>
+    <div class="name-field">
+      <label for="lastname">Last</label>
+      <input type="text" id="lastname" placeholder="Last name" autocomplete="family-name" />
     </div>
     <div class="instructions">
       Tap your <strong>1st</strong>, <strong>2nd</strong>, and <strong>3rd</strong> choice in order. Swipe to see all days. Tap again to deselect.
@@ -312,6 +357,13 @@
     <div class="cal-grid" id="cal-grid"></div>
   </div>
 
+  <div style="padding: 12px 16px 0;">
+    <div class="form-card">
+      <label for="notes">Notes for Rabbi Gray <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:#B0A898">(optional — if none of these times work, let him know here)</span></label>
+      <textarea id="notes" rows="3" placeholder="e.g. I have a conflict most of the week this term, but…"></textarea>
+    </div>
+  </div>
+
   <div class="submit-bar">
     <button id="submit" disabled>Submit</button>
     <div class="status-text" id="status-text">Select 3 times to continue</div>
@@ -319,9 +371,9 @@
 </div>
 
 <div id="success">
-  <div class="menorah">🕍</div>
-  <h2>You're all set!</h2>
-  <p class="subtitle">Rabbi Gray will reach out to confirm your weekly time.</p>
+  <div class="menorah" id="success-icon">🕍</div>
+  <h2 id="success-heading">Sending...</h2>
+  <p class="subtitle" id="success-subtitle"></p>
   <div class="result-card" id="result-card"></div>
 </div>
 
@@ -484,7 +536,7 @@ function render() {
   });
 
   const filled = choices.filter(Boolean).length;
-  const hasName = document.getElementById('name').value.trim().length > 0;
+  const hasName = document.getElementById('firstname').value.trim().length > 0 && document.getElementById('lastname').value.trim().length > 0;
   const submitBtn = document.getElementById('submit');
   const statusEl = document.getElementById('status-text');
 
@@ -492,15 +544,17 @@ function render() {
   if (filled === 0) statusEl.textContent = 'Select 3 times to continue';
   else if (filled === 1) statusEl.textContent = '2 more to go';
   else if (filled === 2) statusEl.textContent = '1 more to go';
-  else if (!hasName) statusEl.textContent = 'Enter your name above';
+  else if (!hasName) statusEl.textContent = 'Enter your first and last name above';
   else statusEl.textContent = '✓ Ready to submit';
 }
 
-document.getElementById('name').addEventListener('input', render);
+document.getElementById('firstname').addEventListener('input', render);
+document.getElementById('lastname').addEventListener('input', render);
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
 document.getElementById('submit').addEventListener('click', () => {
-  const name = document.getElementById('name').value.trim();
+  const name  = document.getElementById('firstname').value.trim() + ' ' + document.getElementById('lastname').value.trim();
+  const notes = document.getElementById('notes').value.trim();
 
   function slotInfo(id) {
     const el = document.querySelector(`.slot[data-id="${id}"]`);
@@ -514,38 +568,43 @@ document.getElementById('submit').addEventListener('click', () => {
 
   const [first, second, third] = choices.map(slotInfo);
 
-  const SUBMIT_URL = 'YOUR_APPS_SCRIPT_URL_HERE'; // ← paste your Apps Script URL here
-  if (SUBMIT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE') {
-    fetch(SUBMIT_URL, { method: 'POST', body: JSON.stringify({ name, first, second, third }) })
-      .catch(() => {}); // silent fail — success screen always shows
-  }
-
   document.getElementById('form-view').style.display = 'none';
   const s = document.getElementById('success');
   s.style.display = 'block';
+
+  const SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbwMCs8pzvmOMdbZfO6uBZsr-dVUpC17Lr609PlbQUg6ZEpOaxpIG46Y--FfkwicrALW/exec';
+  fetch(SUBMIT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ name, first, second, third, notes }) })
+    .then(() => {
+      document.getElementById('success-icon').textContent = '🕍';
+      document.getElementById('success-heading').textContent = 'You\'re all set!';
+      document.getElementById('success-subtitle').textContent = 'Rabbi Gray will reach out to confirm your weekly time.';
+    })
+    .catch(() => {
+      document.getElementById('success-icon').textContent = '⚠️';
+      document.getElementById('success-heading').textContent = 'Something went wrong';
+      document.getElementById('success-subtitle').textContent = 'Your choices didn\'t go through. Please screenshot this and send it to Rabbi Gray directly.';
+    });
 
   document.getElementById('result-card').innerHTML = `
     <div class="result-row">
       <div class="result-rank r1">1</div>
       <div>
-        <div class="result-label">${first.day} · Period ${first.period}</div>
-        <div class="result-sub">${first.start} – ${first.end}</div>
+        <div class="result-label">${first.day}, ${first.start}</div>
       </div>
     </div>
     <div class="result-row">
       <div class="result-rank r2">2</div>
       <div>
-        <div class="result-label">${second.day} · Period ${second.period}</div>
-        <div class="result-sub">${second.start} – ${second.end}</div>
+        <div class="result-label">${second.day}, ${second.start}</div>
       </div>
     </div>
     <div class="result-row">
       <div class="result-rank r3">3</div>
       <div>
-        <div class="result-label">${third.day} · Period ${third.period}</div>
-        <div class="result-sub">${third.start} – ${third.end}</div>
+        <div class="result-label">${third.day}, ${third.start}</div>
       </div>
     </div>
+    ${notes ? `<div class="result-row"><div style="font-size:13px;color:var(--muted);line-height:1.5"><strong>Notes:</strong> ${notes}</div></div>` : ''}
     <div class="result-row" style="justify-content:center;padding:10px 16px">
       <span style="font-size:13px;color:var(--muted)">Submitted for <strong>${name}</strong></span>
     </div>
