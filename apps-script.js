@@ -24,14 +24,11 @@ function doPost(e) {
     if (!sheet) {
       sheet = ss.insertSheet(SHEET_NAME);
       sheet.appendRow([
-        'Timestamp',
         'Student Name',
-        '1st Choice — Day',
-        '1st Choice — Period',
-        '1st Choice — Time',
-        '2nd Choice — Day',
-        '2nd Choice — Period',
-        '2nd Choice — Time',
+        '1st Choice',
+        '2nd Choice',
+        '3rd Choice',
+        'Notes',
       ]);
       // Bold the header row
       sheet.getRange(1, 1, 1, 8).setFontWeight('bold');
@@ -39,14 +36,11 @@ function doPost(e) {
     }
 
     sheet.appendRow([
-      new Date(),
       data.name,
-      data.first.day,
-      'Period ' + data.first.period,
-      data.first.start,
-      data.second.day,
-      'Period ' + data.second.period,
-      data.second.start,
+      data.first.day + ', ' + data.first.start,
+      data.second.day + ', ' + data.second.start,
+      data.third.day + ', ' + data.third.start,
+      data.notes || '',
     ]);
 
     return ContentService
@@ -66,8 +60,11 @@ function testSubmit() {
     postData: {
       contents: JSON.stringify({
         name: 'Test Student',
+        terms: '0',
         first:  { day: 'Wednesday', period: '11', start: '11:30 AM' },
         second: { day: 'Thursday',  period: '2A', start: '2:25 PM'  },
+        third:  { day: 'Monday',    period: '12', start: '12:50 PM' },
+        notes: 'This is a test note.',
       })
     }
   });
